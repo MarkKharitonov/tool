@@ -9,8 +9,10 @@
 #include "decompression_output_filter.h"
 
 #include <boost/iostreams/filtering_stream.hpp>
+#include <boost/log/trivial.hpp>
 
 namespace io = boost::iostreams;
+namespace logging = boost::log;
 
 using namespace TCLAP;
 using namespace std;
@@ -37,6 +39,7 @@ void Uncompress(istream & inFile, streamoff fileLength, ostream& outFile, size_t
 
     if (Mode::InputFilter == mode)
     {
+        BOOST_LOG_TRIVIAL(trace) << "Using decompression input filter";
         io::filtering_istream in;
         in.push(decompression_input_filter(h.GetRoot(), h.GetUncompressedByteCount()));
         in.push(inFile);
@@ -45,6 +48,7 @@ void Uncompress(istream & inFile, streamoff fileLength, ostream& outFile, size_t
     }
     else
     {
+        BOOST_LOG_TRIVIAL(trace) << "Using decompression output filter";
         io::filtering_ostream out;
         out.push(decompression_output_filter(h.GetRoot(), h.GetUncompressedByteCount()));
         out.push(outFile);
@@ -62,6 +66,7 @@ void Compress(istream& inFile, streamoff fileLength, ostream& outFile, size_t bu
 
     if (Mode::InputFilter == mode)
     {
+        BOOST_LOG_TRIVIAL(trace) << "Using compression input filter";
         io::filtering_istream in;
         in.push(compression_input_filter(h.GetBits()));
         in.push(inFile);
@@ -70,6 +75,7 @@ void Compress(istream& inFile, streamoff fileLength, ostream& outFile, size_t bu
     }
     else
     {
+        BOOST_LOG_TRIVIAL(trace) << "Using compression output filter";
         io::filtering_ostream out;
         out.push(compression_output_filter(h.GetBits()));
         out.push(outFile);
@@ -96,7 +102,22 @@ int main(int argc, char** argv)
         cmd.parse(argc, argv);
 
         ifstream inFile(inputArg.getValue(), ios::ate | ios::binary);
-        ofstream outFile(outputArg.getValue(), ios::out | ios::binary);
+        if (inFile.fail()) 
+        {
+            stringstream ss;
+            ss << "Input file " << inputArg.getValue() << " could not be open";
+            perror(ss.str().c_str());
+            return 1;
+        }
+        ofstream outFile(outputArg.getValue(), ios::binary);
+        if (outFile.fail())
+        {
+            stringstream ss;
+            ss << "Output file " << outputArg.getValue() << " could not be created";
+            perror(ss.str().c_str());
+            return 1;
+        }
+
         auto bufferSize = bufferSizeArg.getValue();
 
         auto fileLength = inFile.tellg();

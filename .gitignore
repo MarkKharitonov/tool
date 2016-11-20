@@ -6,4 +6,6 @@
 ipch
 x64
 graph.txt
+Win32
+.vs
 
