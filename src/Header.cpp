@@ -5,16 +5,6 @@
 
 using namespace std;
 
-const string Header::buffer_size_error::s_msg = string("The given buffer size is too small. It must be at least ") + to_string(Header::s_maxBufferSize) + " bytes long";
-
-void PopulateMap(unsigned long long charMap[], const char *buf, streamsize count)
-{
-    for (auto i = 0; i < count; ++i)
-    {
-        ++charMap[buf[i]];
-    }
-}
-
 void Reverse(Bits& bits)
 {
     auto sz = bits.size();
@@ -100,7 +90,7 @@ void DumpGraph(const Node *pRoot)
     os << "}" << endl;
 }
 
-const Node *BuildTree(unsigned long long charMap[], unsigned char& countEntries)
+const Node *BuildTree(unsigned long long charMap[], unsigned short& countEntries)
 {
     vector<Node *> nodes;
     for (int c = 0; c < 256; ++c)
@@ -128,20 +118,16 @@ const Node *BuildTree(unsigned long long charMap[], unsigned char& countEntries)
     return nodes[0];
 }
 
-Header::Header(istream& inFile, streamoff fileLength, char *buf, size_t bufferSize)
+Header::Header(istream& inFile)
 {
-    if (bufferSize < s_maxBufferSize)
-    {
-        throw buffer_size_error();
-    }
-
     unsigned long long charMap[256] = { 0 };
-    while (fileLength > 0 && inFile.read(buf, size_t(fileLength) > bufferSize ? bufferSize : fileLength))
+    int c;
+    while ((c = inFile.get()) >= 0)
     {
-        PopulateMap(charMap, buf, inFile.gcount());
-        fileLength -= inFile.gcount();
+        ++charMap[c];
     }
 
+    inFile.clear();
     inFile.seekg(0);
 
     unique_ptr<const Node> pRoot(BuildTree(charMap, m_countEntries));
@@ -168,7 +154,7 @@ Header::Header(istream& inFile, streamoff fileLength, char *buf, size_t bufferSi
 ostream& operator << (ostream& os, const Header& h)
 {
     auto data = reinterpret_cast<const char *>(&h.m_countEntries);
-    auto size = 1 + sizeof(h.m_uncompressedByteCount) + h.m_countEntries * sizeof(Header::Entry);
+    auto size = sizeof(h.m_countEntries) + sizeof(h.m_uncompressedByteCount) + h.m_countEntries * sizeof(Header::Entry);
     return os.write(data, size);
 }
 
@@ -185,7 +171,7 @@ istream& operator >> (istream& is, Header& h)
         charMap[entry.Char] = entry.Frequency;
     }
 
-    unsigned char dummy;
+    unsigned short dummy;
     h.m_pRoot.reset(BuildTree(charMap, dummy));
     return is;
 }

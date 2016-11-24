@@ -15,14 +15,8 @@ class Header
     };
 #pragma pack(pop)
 public:
-    class buffer_size_error : runtime_error
-    {
-        static const string s_msg;
-    public:
-        buffer_size_error() :runtime_error(s_msg) {}
-    };
     Header() {}
-    Header(istream& is, streamoff fileLength, char *buf, size_t bufferSize);
+    Header(basic_istream<char>& is);
     const Bits& GetBits(unsigned char c) const { return m_bits[c]; }
     const Bits *GetBits() const { return m_bits; }
     const Node *GetRoot() const { return m_pRoot.get(); }
@@ -35,10 +29,9 @@ private:
 #pragma pack(push, 1)
     struct
     {
-        unsigned char m_countEntries = 0;
+        unsigned short m_countEntries = 0;
         unsigned long long m_uncompressedByteCount = 0;
         Entry m_entries[256];
     };
 #pragma pack(pop)
-    const static int s_maxBufferSize = 1 + sizeof(Entry) * 256;
 };

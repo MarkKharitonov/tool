@@ -21,6 +21,9 @@
 #include <iomanip>
 #include <cctype>
 #include <numeric>
+#include <cstring>
+#include <streambuf>
+#include <utility>
 
 
 // TODO: reference additional headers your program requires here

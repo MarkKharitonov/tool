@@ -32,7 +32,7 @@ void CopyStream(istream& src, ostream& dst)
     }
 }
 
-void Uncompress(istream & inFile, streamoff fileLength, ostream& outFile, size_t bufferSize, Mode mode)
+void Uncompress(istream & inFile, ostream& outFile, Mode mode)
 {
     Header h;
     inFile >> h;
@@ -57,11 +57,9 @@ void Uncompress(istream & inFile, streamoff fileLength, ostream& outFile, size_t
     }
 }
 
-void Compress(istream& inFile, streamoff fileLength, ostream& outFile, size_t bufferSize, Mode mode)
+void Compress(basic_istream<char>& inFile, ostream& outFile, Mode mode)
 {
-    unique_ptr<char[]> buf(new char[bufferSize]);
-
-    Header h(inFile, fileLength, buf.get(), bufferSize);
+    Header h(inFile);
     outFile << h;
 
     if (Mode::InputFilter == mode)
@@ -84,6 +82,46 @@ void Compress(istream& inFile, streamoff fileLength, ostream& outFile, size_t bu
     }
 }
 
+int run(const string& inFilePath, const string& outFilePath, size_t bufferSize, bool compress, Mode mode)
+{
+    ifstream inFile(inFilePath, ios::binary);
+    if (inFile.fail())
+    {
+        stringstream ss;
+        ss << "Input file " << inFilePath << " could not be open";
+        perror(ss.str().c_str());
+        return 1;
+    }
+
+    ofstream outFile(outFilePath, ios::binary);
+    if (outFile.fail())
+    {
+        stringstream ss;
+        ss << "Output file " << outFilePath << " could not be created";
+        perror(ss.str().c_str());
+        return 1;
+    }
+
+    unique_ptr<char[]> inbuf(new char[bufferSize]);
+    unique_ptr<char[]> outbuf(new char[bufferSize]);
+    inFile.rdbuf()->pubsetbuf(inbuf.get(), bufferSize);
+    outFile.rdbuf()->pubsetbuf(outbuf.get(), bufferSize);
+
+    inFile.exceptions(ifstream::badbit);
+    outFile.exceptions(ifstream::badbit);
+
+    if (compress)
+    {
+        Compress(inFile, outFile, mode);
+    }
+    else
+    {
+        Uncompress(inFile, outFile, mode);
+    }
+    outFile.flush();
+    return 0;
+}
+
 int main(int argc, char** argv)
 {
     // Wrap everything in a try block.  Do this every time, 
@@ -101,39 +139,9 @@ int main(int argc, char** argv)
         cmd.xorAdd(compressArg, uncompressArg);
         cmd.parse(argc, argv);
 
-        ifstream inFile(inputArg.getValue(), ios::ate | ios::binary);
-        if (inFile.fail()) 
-        {
-            stringstream ss;
-            ss << "Input file " << inputArg.getValue() << " could not be open";
-            perror(ss.str().c_str());
-            return 1;
-        }
-        ofstream outFile(outputArg.getValue(), ios::binary);
-        if (outFile.fail())
-        {
-            stringstream ss;
-            ss << "Output file " << outputArg.getValue() << " could not be created";
-            perror(ss.str().c_str());
-            return 1;
-        }
-
         auto bufferSize = bufferSizeArg.getValue();
 
-        auto fileLength = inFile.tellg();
-        inFile.seekg(0);
-
-        inFile.exceptions(ifstream::badbit);
-        outFile.exceptions(ifstream::badbit);
-
-        if (compressArg.getValue())
-        {
-            Compress(inFile, fileLength, outFile, bufferSize, (Mode)modeArg.getValue());
-        }
-        else
-        {
-            Uncompress(inFile, fileLength, outFile, bufferSize, (Mode)modeArg.getValue());
-        }
+        return run(inputArg.getValue(), outputArg.getValue(), bufferSizeArg.getValue(), compressArg.getValue(), (Mode)modeArg.getValue());
     }
     catch (ArgException &e)  // catch any exceptions
     {

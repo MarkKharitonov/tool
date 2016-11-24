@@ -26,9 +26,14 @@ ostream& operator<<(ostream& os, const NodeId& nodeId)
     {
         return os << "n" << nodeId.m_origin.GetId();
     }
-    if (isgraph(nodeId.m_origin.GetChar()))
+    auto c = nodeId.m_origin.GetChar();
+    if (isgraph(c))
     {
-        return os << nodeId.m_origin.GetChar();
+        if ('\\' == c || '"' == c)
+        {
+            os << '\\';
+        }
+        return os << c;
     }
-    return os << "0x" << hex << int(nodeId.m_origin.GetChar()) << dec;
+    return os << "0x" << hex << int(c) << dec;
 }
