@@ -24,6 +24,8 @@
 #include <cstring>
 #include <streambuf>
 #include <utility>
+#include <boost/iostreams/filtering_stream.hpp>
+#include <boost/log/trivial.hpp>
 
 
 // TODO: reference additional headers your program requires here

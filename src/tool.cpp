@@ -7,9 +7,7 @@
 #include "decompression_input_filter.h"
 #include "compression_output_filter.h"
 #include "decompression_output_filter.h"
-
-#include <boost/iostreams/filtering_stream.hpp>
-#include <boost/log/trivial.hpp>
+#include "tool.h"
 
 namespace io = boost::iostreams;
 namespace logging = boost::log;
@@ -17,13 +15,7 @@ namespace logging = boost::log;
 using namespace TCLAP;
 using namespace std;
 
-enum class Mode
-{
-    InputFilter,
-    OutputFilter
-};
-
-void CopyStream(istream& src, ostream& dst)
+void copy_stream(istream& src, ostream& dst)
 {
     int c;
     while ((c = src.get()) >= 0)
@@ -32,7 +24,7 @@ void CopyStream(istream& src, ostream& dst)
     }
 }
 
-void Uncompress(istream & inFile, ostream& outFile, Mode mode)
+void uncompress(istream & inFile, ostream& outFile, Mode mode)
 {
     Header h;
     inFile >> h;
@@ -44,7 +36,7 @@ void Uncompress(istream & inFile, ostream& outFile, Mode mode)
         in.push(decompression_input_filter(h.GetRoot(), h.GetUncompressedByteCount()));
         in.push(inFile);
 
-        CopyStream(in, outFile);
+        copy_stream(in, outFile);
     }
     else
     {
@@ -53,13 +45,13 @@ void Uncompress(istream & inFile, ostream& outFile, Mode mode)
         out.push(decompression_output_filter(h.GetRoot(), h.GetUncompressedByteCount()));
         out.push(outFile);
 
-        CopyStream(inFile, out);
+        copy_stream(inFile, out);
     }
 }
 
-void Compress(basic_istream<char>& inFile, ostream& outFile, Mode mode)
+void compress(basic_istream<char>& inFile, ostream& outFile, Mode mode, bool trace)
 {
-    Header h(inFile);
+    Header h(inFile, trace);
     outFile << h;
 
     if (Mode::InputFilter == mode)
@@ -69,7 +61,7 @@ void Compress(basic_istream<char>& inFile, ostream& outFile, Mode mode)
         in.push(compression_input_filter(h.GetBits()));
         in.push(inFile);
 
-        CopyStream(in, outFile);
+        copy_stream(in, outFile);
     }
     else
     {
@@ -78,11 +70,11 @@ void Compress(basic_istream<char>& inFile, ostream& outFile, Mode mode)
         out.push(compression_output_filter(h.GetBits()));
         out.push(outFile);
 
-        CopyStream(inFile, out);
+        copy_stream(inFile, out);
     }
 }
 
-int run(const string& inFilePath, const string& outFilePath, size_t bufferSize, bool compress, Mode mode)
+int run(const string& inFilePath, const string& outFilePath, size_t bufferSize, bool doCompress, Mode mode, bool trace)
 {
     ifstream inFile(inFilePath, ios::binary);
     if (inFile.fail())
@@ -110,18 +102,19 @@ int run(const string& inFilePath, const string& outFilePath, size_t bufferSize, 
     inFile.exceptions(ifstream::badbit);
     outFile.exceptions(ifstream::badbit);
 
-    if (compress)
+    if (doCompress)
     {
-        Compress(inFile, outFile, mode);
+        compress(inFile, outFile, mode, trace);
     }
     else
     {
-        Uncompress(inFile, outFile, mode);
+        uncompress(inFile, outFile, mode);
     }
     outFile.flush();
     return 0;
 }
 
+#if !TEST
 int main(int argc, char** argv)
 {
     // Wrap everything in a try block.  Do this every time, 
@@ -132,6 +125,7 @@ int main(int argc, char** argv)
         CmdLine cmd("Compression tool", ' ', "0.1");
         SwitchArg compressArg("c", "compress", "Compress the input file.");
         SwitchArg uncompressArg("u", "uncompress", "Uncompress the input file.");
+        SwitchArg traceArg("t", "trace", "Enable trace output.", cmd);
         ValueArg<string> inputArg("i", "input", "Input file", true, "", "string", cmd);
         ValueArg<string> outputArg("o", "output", "Output file", true, "", "string", cmd);
         ValueArg<size_t> bufferSizeArg("s", "bufferSize", "Buffer size", false, 10240, "size_t", cmd);
@@ -141,7 +135,7 @@ int main(int argc, char** argv)
 
         auto bufferSize = bufferSizeArg.getValue();
 
-        return run(inputArg.getValue(), outputArg.getValue(), bufferSizeArg.getValue(), compressArg.getValue(), (Mode)modeArg.getValue());
+        return run(inputArg.getValue(), outputArg.getValue(), bufferSizeArg.getValue(), compressArg.getValue(), (Mode)modeArg.getValue(), traceArg.getValue());
     }
     catch (ArgException &e)  // catch any exceptions
     {
@@ -149,3 +143,4 @@ int main(int argc, char** argv)
     }
     return 0;
 }
+#endif

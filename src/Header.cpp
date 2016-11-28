@@ -118,7 +118,7 @@ const Node *BuildTree(unsigned long long charMap[], unsigned short& countEntries
     return nodes[0];
 }
 
-Header::Header(istream& inFile)
+Header::Header(istream& inFile, bool trace)
 {
     unsigned long long charMap[256] = { 0 };
     int c;
@@ -128,46 +128,130 @@ Header::Header(istream& inFile)
     }
 
     inFile.clear();
+    if (!inFile.tellg())
+    {
+        return;
+    }
+
     inFile.seekg(0);
 
-    unique_ptr<const Node> pRoot(BuildTree(charMap, m_countEntries));
+    unique_ptr<const Node> pRoot(BuildTree(charMap, m_data.m_countEntries));
     Bits cur;
     PopulateBits(m_bits, pRoot.get(), cur);
+    
+    if (trace)
+    {
+        DumpHistogramm(charMap, m_bits);
 
-    DumpHistogramm(charMap, m_bits);
+        DumpGraph(pRoot.get());
+    }
 
-    DumpGraph(pRoot.get());
-
-    Entry *pCurEntry = m_entries;
+    Entry *pCurEntry = m_data.m_entries;
     for (int c = 0; c < 256; ++c)
     {
         if (charMap[c])
         {
             pCurEntry->Char = c;
             pCurEntry->Frequency = charMap[c];
-            m_uncompressedByteCount += charMap[c];
+            m_data.m_uncompressedByteCount += charMap[c];
             ++pCurEntry;
         }
     }
 }
 
+void write(unsigned char val, char*& buffer)
+{
+    buffer[0] = val;
+    ++buffer;
+}
+void write(unsigned short val, char*& buffer)
+{
+    buffer[0] = val & 0xFF;
+    buffer[1] = val >> 8;
+    buffer += 2;
+}
+void write(unsigned long long val, char*& buffer)
+{
+    buffer[0] = val & 0xFF;
+    buffer[1] = (val >> 8) & 0xFF;
+    buffer[2] = (val >> 16) & 0xFF;
+    buffer[3] = (val >> 24) & 0xFF;
+    buffer[4] = (val >> 32) & 0xFF;
+    buffer[5] = (val >> 40) & 0xFF;
+    buffer[6] = (val >> 48) & 0xFF;
+    buffer[7] = val >> 56;
+    buffer += 8;
+}
+void read(unsigned char& val, char*& buffer)
+{
+    val = buffer[0];
+    ++buffer;
+}
+void read(unsigned short& val, char*& buffer)
+{
+    val = buffer[1]; val <<= 8;
+    val |= buffer[0];
+    buffer += 2;
+}
+void read(unsigned long long& val, char*& buffer)
+{
+    val = buffer[7]; val <<= 8;
+    val |= buffer[6]; val <<= 8;
+    val |= buffer[5]; val <<= 8;
+    val |= buffer[4]; val <<= 8;
+    val |= buffer[3]; val <<= 8;
+    val |= buffer[2]; val <<= 8;
+    val |= buffer[1]; val <<= 8;
+    val |= buffer[0];
+    buffer += 8;
+}
+
 ostream& operator << (ostream& os, const Header& h)
 {
-    auto data = reinterpret_cast<const char *>(&h.m_countEntries);
-    auto size = sizeof(h.m_countEntries) + sizeof(h.m_uncompressedByteCount) + h.m_countEntries * sizeof(Header::Entry);
-    return os.write(data, size);
+    if (!h.m_data.m_countEntries)
+    {
+        return os;
+    }
+    char buffer[sizeof(Header::HeaderData)];
+    auto pCurPos = buffer;
+    write(h.m_data.m_countEntries, pCurPos);
+    write(h.m_data.m_uncompressedByteCount, pCurPos);
+    for (int i = 0; i < h.m_data.m_countEntries; ++i)
+    {
+        write(h.m_data.m_entries[i].Char, pCurPos);
+        write(h.m_data.m_entries[i].Frequency, pCurPos);
+    }
+    return os.write(buffer, pCurPos - buffer);
 }
 
 istream& operator >> (istream& is, Header& h)
 {
-    is >> h.m_countEntries;
-    auto data = reinterpret_cast<char *>(&h.m_uncompressedByteCount);
-    is.read(data, sizeof(h.m_uncompressedByteCount) + h.m_countEntries * sizeof(Header::Entry));
+    auto curPos = is.tellg();
+    if (!is.seekg(curPos + streamoff(1)))
+    {
+        return is;
+    }
+    is.seekg(curPos);
+
+    char tmp[2];
+    auto pCurPos = tmp;
+    is.read(tmp, 2);
+    read(h.m_data.m_countEntries, pCurPos);
+
+    char buffer[sizeof(Header::HeaderData) - 2];
+    is.read(buffer, sizeof(h.m_data.m_uncompressedByteCount) + h.m_data.m_countEntries * sizeof(Header::Entry));
+    pCurPos = buffer;
+    read(h.m_data.m_uncompressedByteCount, pCurPos);
+    for (int i = 0; i < h.m_data.m_countEntries; ++i)
+    {
+        read(h.m_data.m_entries[i].Char, pCurPos);
+        read(h.m_data.m_entries[i].Frequency, pCurPos);
+    }
 
     unsigned long long charMap[256] = { 0 };
-    for (int i = 0; i < h.m_countEntries; ++i)
+    for (int i = 0; i < h.m_data.m_countEntries; ++i)
     {
-        auto entry = h.m_entries[i];
+        auto entry = h.m_data.m_entries[i];
         charMap[entry.Char] = entry.Frequency;
     }
 

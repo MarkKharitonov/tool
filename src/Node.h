@@ -30,6 +30,11 @@ public:
     {
         assert(pLeft->m_count >= pRight->m_count);
     }
+    ~Node()
+    {
+        delete m_pLeft;
+        delete m_pRight;
+    }
     const Node *GetLeft() const { return m_pLeft; }
     const Node *GetRight() const { return m_pRight; }
     unsigned char GetChar() const { return m_char; }
