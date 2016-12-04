@@ -118,7 +118,7 @@ const Node *BuildTree(unsigned long long charMap[], unsigned short& countEntries
     return nodes[0];
 }
 
-Header::Header(istream& inFile, bool trace)
+Header::Header(basic_istream<char>& inFile, bool trace)
 {
     unsigned long long charMap[256] = { 0 };
     int c;
@@ -146,8 +146,8 @@ Header::Header(istream& inFile, bool trace)
         DumpGraph(pRoot.get());
     }
 
-    Entry *pCurEntry = m_data.m_entries;
-    for (int c = 0; c < 256; ++c)
+    auto pCurEntry = m_data.m_entries;
+    for (c = 0; c < 256; ++c)
     {
         if (charMap[c])
         {
@@ -189,20 +189,20 @@ void read(unsigned char& val, char*& buffer)
 }
 void read(unsigned short& val, char*& buffer)
 {
-    val = buffer[1]; val <<= 8;
-    val |= buffer[0];
+    val = unsigned short(buffer[1]) & 0xFF; val <<= 8;
+    val |= unsigned short(buffer[0]) & 0xFF;
     buffer += 2;
 }
 void read(unsigned long long& val, char*& buffer)
 {
-    val = buffer[7]; val <<= 8;
-    val |= buffer[6]; val <<= 8;
-    val |= buffer[5]; val <<= 8;
-    val |= buffer[4]; val <<= 8;
-    val |= buffer[3]; val <<= 8;
-    val |= buffer[2]; val <<= 8;
-    val |= buffer[1]; val <<= 8;
-    val |= buffer[0];
+    val = unsigned long long(buffer[7]) & 0xFF; val <<= 8;
+    val |= unsigned long long(buffer[6]) & 0xFF; val <<= 8;
+    val |= unsigned long long(buffer[5]) & 0xFF; val <<= 8;
+    val |= unsigned long long(buffer[4]) & 0xFF; val <<= 8;
+    val |= unsigned long long(buffer[3]) & 0xFF; val <<= 8;
+    val |= unsigned long long(buffer[2]) & 0xFF; val <<= 8;
+    val |= unsigned long long(buffer[1]) & 0xFF; val <<= 8;
+    val |= unsigned long long(buffer[0]) & 0xFF;
     buffer += 8;
 }
 

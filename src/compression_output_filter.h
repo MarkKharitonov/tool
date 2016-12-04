@@ -13,12 +13,7 @@ public:
     template<typename Sink>
     bool put(Sink& dest, int c)
     {
-        if (c < 0)
-        {
-            return io::put(dest, c);
-        }
-
-        const Bits *pCurBits = m_pBits + c;
+        const Bits *pCurBits = m_pBits + unsigned char(c);
         int curBitsPos = pCurBits->size();
 
         while (true)

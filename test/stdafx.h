@@ -7,7 +7,14 @@
 
 #include "targetver.h"
 
+#include <numeric>
+#include <iostream>
+#include <algorithm>
+#include <iterator>
+#include <vector>
 #include <boost/interprocess/streams/bufferstream.hpp>
 #include <boost/interprocess/streams/vectorstream.hpp>
+#include <iomanip>
+#include <fstream>
 
 using namespace boost::interprocess;

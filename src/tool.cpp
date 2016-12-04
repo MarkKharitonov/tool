@@ -24,11 +24,8 @@ void copy_stream(istream& src, ostream& dst)
     }
 }
 
-void uncompress(istream & inFile, ostream& outFile, Mode mode)
+void do_uncompress(const Header& h, istream& inFile, ostream& outFile, Mode mode)
 {
-    Header h;
-    inFile >> h;
-
     if (Mode::InputFilter == mode)
     {
         BOOST_LOG_TRIVIAL(trace) << "Using decompression input filter";
@@ -49,11 +46,16 @@ void uncompress(istream & inFile, ostream& outFile, Mode mode)
     }
 }
 
-void compress(basic_istream<char>& inFile, ostream& outFile, Mode mode, bool trace)
+void uncompress(istream & inFile, ostream& outFile, Mode mode)
 {
-    Header h(inFile, trace);
-    outFile << h;
+    Header h;
+    inFile >> h;
 
+    do_uncompress(h, inFile, outFile, mode);
+}
+
+void do_compress(const Header& h, basic_istream<char>& inFile, ostream& outFile, Mode mode)
+{
     if (Mode::InputFilter == mode)
     {
         BOOST_LOG_TRIVIAL(trace) << "Using compression input filter";
@@ -72,6 +74,14 @@ void compress(basic_istream<char>& inFile, ostream& outFile, Mode mode, bool tra
 
         copy_stream(inFile, out);
     }
+}
+
+void compress(basic_istream<char>& inFile, ostream& outFile, Mode mode, bool trace)
+{
+    Header h(inFile, trace);
+    outFile << h;
+
+    do_compress(h, inFile, outFile, mode);
 }
 
 int run(const string& inFilePath, const string& outFilePath, size_t bufferSize, bool doCompress, Mode mode, bool trace)
